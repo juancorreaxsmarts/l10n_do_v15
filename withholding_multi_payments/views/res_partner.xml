@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<odoo>
+
+    <!--  inherit partner form. -->
+    <record id="view_partner_form_tis_tds_inherit" model="ir.ui.view">
+        <field name="name">res.partner.form.tis.tds</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page[@name='sales_purchases']" position="after">
+                <page name="partner_tds" string="TDS">
+                    <div>
+                        <label for="tds_threshold_check"
+                               string="Apply TDS / Withholding if the turnover crosses the threshold"/>
+                        <field name="tds_threshold_check"/>
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

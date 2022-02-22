@@ -1,0 +1,90 @@
+<openerp>
+  <data> 
+    <!--supplier/customer payment-->
+      <record model="ir.ui.view" id="account_payment_form_inherit_imp">
+      <field name="name">account.payment.imp.form</field>
+      <field name="model">account.payment</field>
+      <field name="inherit_id" ref="account.view_account_payment_form"/>
+      <field name="arch" type="xml">
+        <xpath expr="//group" position="after">
+          <notebook>
+            <page string="Invoice Lines" attrs="{'invisible': [('invoice_lines', '=', False)]}">
+              <button name="update_invoice_lines" string="Update Invoice" type="object" class="btn-primary" attrs="{'invisible':[('state', '=', 'posted')]}"/>
+              <field name="multipagos" invisible="1"/> 
+              <field name="invoice_lines" attrs="{'readonly':[('state', '!=', 'draft')]}">
+                <tree create="false" editable="bottom">
+                  <field name="invoice_id" optional="show"/>
+                  <!-- <field name="account_id" invisible="1"/> -->
+                  <field name="invoice" invisible="1"/> 
+                  <field name="date" readonly="True" optional="hide"/> 
+                  <field name="due_date" readonly="True" optional="hide"/>                
+                  <field name="base_amount" optional="show"/>                 
+                  <field name="tax_amount" optional="show"/>
+                  <field name="total_amount" readonly="True" sum="Total Amount" optional="show"/> 
+                  <field name="open_amount" readonly="True" sum="Due Amount" optional="show"/> 
+                  <field name="tax_ids_after" widget="many2many_tags"
+                                               options="{'no_create': True}"
+                                               optional="show" invisible="1"/>
+                  <field name="amount_base_tax" invisible="1"/>
+                  <field name="tax_ids_before" widget="many2many_tags"
+                                               options="{'no_create': True}"
+                                               optional="show"/>
+                  <field name="amount_total_tax"/>                
+                  <field name="allocation" sum="Allocated Amount" optional="show"/>
+                  <field name="account_move_line_id"/>
+                </tree>
+                <form string="Invoice" create="false">
+                  <group>
+                    <field name="invoice_id"/>
+                    <field name="invoice"/> 
+                    <field name="date" readonly="True"/>  
+                    <field name="due_date" readonly="True"/>
+                    <field name="base_amount"/>                 
+                    <field name="tax_amount"/>
+                    <field name="total_amount" readonly="True"/> 
+                    <field name="open_amount" readonly="True"/> 
+                    <field name="allocation" />
+                  </group>
+                </form>
+              </field>
+                
+            </page>
+            <page  string="Impuestos">
+              <field name="tds_multi_acc_ids" nolabel="1">
+                  <tree string="Post Difference Accounts" editable="bottom">
+                      <field name="tds_account_id"/>
+                      <field name="name" required="1"/>
+                      <field name="amount" sum="Total Amount"/>
+                      <field name="currency_id" options="{'no_create': True, 'no_open': True}"
+                             groups="base.group_multi_currency"/>
+                      <field name="invoice"/>
+                      <field name="repeat"/>
+                  </tree>
+              </field>
+            </page>
+          </notebook> 
+        </xpath> 
+      </field>
+      </record>  
+      <record model="ir.ui.view" id="account_move_line_inherit">
+            <field name="name">account.move.line.list</field>
+            <field name="model">account.move.line</field>
+            <field name="inherit_id" ref="account.view_move_line_tree_grouped"/>
+            <field name="arch" type="xml">
+         <xpath expr="//field[@name='amount_currency']" position="after">         
+         <field name="invoice_id"/>                   
+        </xpath> 
+      </field>
+      </record> 
+       <record id="account_move_payment" model="ir.ui.view">
+            <field name="name">account.move.payment</field>
+            <field name="model">account.move</field>
+            <field name="inherit_id" ref="account.view_move_form"/>
+            <field name="arch" type="xml">               
+                <xpath expr="//button[@name='action_invoice_register_payment']" position="replace">
+                <button name="action_invoice_register_payment" context="{'default_multipagos':False}" id="account_invoice_payment_btn" type="object" class="oe_highlight" attrs="{'invisible': ['|', '|', ('state', '!=', 'posted'), ('invoice_payment_state', '!=', 'not_paid'), ('type', 'not in', ('out_invoice', 'out_refund', 'in_invoice', 'in_refund', 'out_receipt', 'in_receipt'))]}" string="Register Payment" groups="account.group_account_invoice"/>
+                </xpath>
+            </field>
+        </record>
+  </data>
+</openerp>
