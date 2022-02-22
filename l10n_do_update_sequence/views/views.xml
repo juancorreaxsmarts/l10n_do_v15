@@ -35,22 +35,5 @@
       </field>
   </record>
 
-  <record model="ir.ui.view" id="herencia_module">
-    <field name="name">herencia list</field>
-    <field name="model">account.move</field>
-    <field name="inherit_id" ref="account.view_move_form" />
-    <field name="arch" type="xml">
-      <xpath expr="//field[@name='invoice_line_ids']/tree/field[@name='quantity']" position = "after">
-
-        <field name="always_set_currency_id" invisible="1"/>
-
-      </xpath>
-      <xpath expr = "//field[@name='line_ids']/tree/field[@name='account_id']" position = "before" >
-
-        <field name="always_set_currency_id" invisible="1"/>
-      </xpath>
-    </field>
-  </record>
-
 
 </odoo>
