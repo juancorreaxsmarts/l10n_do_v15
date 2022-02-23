@@ -125,7 +125,7 @@ class AccountMove(models.Model):
     @api.depends(
         "l10n_latam_available_document_type_ids", "type", "l10n_latam_document_type_id"
     )
-    @api.depends_context("internal_type")
+    #@api.depends_context("internal_type")
     def _compute_l10n_latam_document_type(self):
         super(AccountMove, self)._compute_l10n_latam_document_type()
 
