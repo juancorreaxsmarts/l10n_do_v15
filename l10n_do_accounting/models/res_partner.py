@@ -1,6 +1,6 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import AccessError
-
+from zeep import Client
 
 class Partner(models.Model):
     _inherit = "res.partner"
@@ -11,6 +11,7 @@ class Partner(models.Model):
         return [
             ("taxpayer", _("Fiscal Tax Payer")),
             ("non_payer", _("Non Tax Payer")),
+            ("minor", _("Minor expenses")),
             ("nonprofit", _("Nonprofit Organization")),
             ("special", _("special from Tax Paying")),
             ("governmental", _("Governmental")),
@@ -93,10 +94,8 @@ class Partner(models.Model):
             )
 
     def write(self, vals):
-
         res = super(Partner, self).write(vals)
         self._check_l10n_do_fiscal_fields(vals)
-
         return res
 
     @api.depends("vat", "country_id", "name")
@@ -157,3 +156,47 @@ class Partner(models.Model):
     def _inverse_l10n_do_dgii_tax_payer_type(self):
         for partner in self:
             partner.l10n_do_dgii_tax_payer_type = partner.l10n_do_dgii_tax_payer_type
+
+    @api.model
+    def validate_rnc_cedula(self, fiscal_id):
+        invalid_fiscal_id_message = (500, u"RNC/Cédula invalido", u"El número de RNC/Cedula no es valido.")
+        try:
+            res = Client(wsdl='https://dgii.gov.do/wsMovilDGII/WSMovilDGII.asmx?WSDL')
+            dgii_data = eval(res.service.GetContribuyentes(fiscal_id,0,0,1,''))
+            if dgii_data:
+                #dgii_data = res.json()
+                dgii_data["vat"] = dgii_data['RGE_RUC']
+                dgii_data["name"] = dgii_data['RGE_NOMBRE']
+                dgii_data["comment"] = u"Nombre Comercial: {}, regimen de pago: {},  estatus: {}, categoria: {}".format(
+                                    dgii_data['NOMBRE_COMERCIAL'], 
+                                    dgii_data.get('REGIMEN_PAGOS', ""), 
+                                    dgii_data['ESTATUS'],
+                                    dgii_data['CATEGORIA'])
+                if len(fiscal_id) == 9:
+                    dgii_data.update({"company_type": u"company"})
+                    dgii_data.update({"is_company": u"True"})
+                else:
+                    dgii_data.update({"company_type": u"person"})
+
+                return 1, dgii_data
+            else:
+                return 0, invalid_fiscal_id_message
+        except:
+            return 0, 'Error conexion DGII'
+
+    @api.onchange("name","vat")
+    def onchange_partner_name(self):
+        valido = 0
+        if self.vat and len(self.vat) in (9,11):
+            valido, dgii_data = self.validate_rnc_cedula(self.vat)
+        elif self.name and len(self.name) in (9,11):
+            valido, dgii_data = self.validate_rnc_cedula(self.name)
+        if valido == 1:
+            self.vat = dgii_data['vat']
+            self.name = dgii_data['name']
+            self.comment = dgii_data['comment']
+            self.company_type = dgii_data['company_type']
+        # self.message_post(body='Prueba', subject='Prueba')
+        # else:
+        #     for rec in self:
+        #         rec.message_post(body="prueba")

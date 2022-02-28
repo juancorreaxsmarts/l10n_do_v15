@@ -3,7 +3,6 @@ from werkzeug import urls
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError, UserError, AccessError
 
-
 class AccountMove(models.Model):
     _inherit = "account.move"
 
@@ -104,10 +103,6 @@ class AccountMove(models.Model):
         compute="_compute_l10n_latam_document_type",
         store=True,
     )
-    l10n_do_ecf_edi_file = fields.Binary("ECF XML File", copy=False, readonly=True)
-    l10n_do_ecf_edi_file_name = fields.Char(
-        "ECF XML File Name", copy=False, readonly=True
-    )
 
     @api.depends(
         "l10n_latam_country_code",
@@ -123,14 +118,14 @@ class AccountMove(models.Model):
             )
 
     @api.depends(
-        "l10n_latam_available_document_type_ids", "type", "l10n_latam_document_type_id"
+        "l10n_latam_available_document_type_ids", "move_type", "l10n_latam_document_type_id"
     )
-    #@api.depends_context("internal_type")
+    @api.depends_context("internal_type")
     def _compute_l10n_latam_document_type(self):
         super(AccountMove, self)._compute_l10n_latam_document_type()
 
         for invoice in self:
-            invoice.is_l10n_do_internal_sequence = invoice.type in (
+            invoice.is_l10n_do_internal_sequence = invoice.move_type in (
                 "out_invoice",
                 "out_refund",
             ) or invoice.l10n_latam_document_type_id.l10n_do_ncf_type in (
@@ -161,9 +156,7 @@ class AccountMove(models.Model):
     def _compute_l10n_do_electronic_stamp(self):
 
         l10n_do_ecf_invoice = self.filtered(
-            lambda i: i.is_ecf_invoice
-            and i.is_l10n_do_internal_sequence
-            and i.l10n_do_ecf_security_code
+            lambda i: i.is_ecf_invoice and i.l10n_do_ecf_security_code
         )
 
         for invoice in l10n_do_ecf_invoice:
@@ -195,8 +188,12 @@ class AccountMove(models.Model):
                 "%f" % abs(invoice.amount_total_signed)
             ).rstrip("0").rstrip(".")
             if not is_rfc:
-                qr_string += "FechaFirma=%s&" % invoice.l10n_do_ecf_sign_date.strftime(
-                    "%d-%m-%Y%%20%H:%M:%S"
+                qr_string += (
+                    "FechaFirma=%s&"
+                    % fields.Datetime.context_timestamp(
+                        self.with_context(tz="America/Santo_Domingo"),
+                        invoice.l10n_do_ecf_sign_date,
+                    ).strftime("%d-%m-%Y %H:%M:%S")
                 )
 
             qr_string += "CodigoSeguridad=%s" % invoice.l10n_do_ecf_security_code or ""
@@ -222,7 +219,7 @@ class AccountMove(models.Model):
                 INNER JOIN account_move move2 ON
                     move2.ref = move.ref
                     AND move2.company_id = move.company_id
-                    AND move2.type = move.type
+                    AND move2.move_type = move.move_type
                     AND move2.id != move.id
                 WHERE move.id IN %s AND move2.state = 'posted'
             """,
@@ -241,7 +238,7 @@ class AccountMove(models.Model):
 
         fiscal_invoice = self.filtered(
             lambda inv: inv.l10n_latam_country_code == "DO"
-            and self.type[-6:] in ("nvoice", "refund")
+            and self.move_type[-6:] in ("nvoice", "refund")
             and inv.l10n_latam_use_documents
             and not inv.is_ecf_invoice
         )
@@ -252,13 +249,13 @@ class AccountMove(models.Model):
             )
 
         if fiscal_invoice and not self.env.user.has_group(
-            "l10n_do_accounting.group_l10n_do_fiscal_invoice_cancel"
+            "l10n_do_accounting_plus.group_l10n_do_fiscal_invoice_cancel"
         ):
             raise AccessError(_("You are not allowed to cancel Fiscal Invoices"))
 
         if fiscal_invoice:
             action = self.env.ref(
-                "l10n_do_accounting.action_account_move_cancel"
+                "l10n_do_accounting_plus.action_account_move_cancel"
             ).read()[0]
             action["context"] = {"default_move_id": fiscal_invoice.id}
             return action
@@ -266,13 +263,12 @@ class AccountMove(models.Model):
         return super(AccountMove, self).button_cancel()
 
     def action_reverse(self):
-
         fiscal_invoice = self.filtered(
             lambda inv: inv.l10n_latam_country_code == "DO"
-            and self.type[-6:] in ("nvoice", "refund")
+            and self.move_type[-6:] in ("nvoice", "refund")
         )
         if fiscal_invoice and not self.env.user.has_group(
-            "l10n_do_accounting.group_l10n_do_fiscal_credit_note"
+            "l10n_do_accounting_plus.group_l10n_do_fiscal_credit_note"
         ):
             raise AccessError(_("You are not allowed to issue Fiscal Credit Notes"))
 
@@ -287,17 +283,17 @@ class AccountMove(models.Model):
         remaining.l10n_latam_document_number = False
         super(AccountMove, remaining)._compute_l10n_latam_document_number()
 
-    @api.onchange("l10n_latam_document_type_id", "l10n_latam_document_number")
+    @api.onchange("l10n_latam_document_type_id", "l10n_latam_document_number","name")
     def _inverse_l10n_latam_document_number(self):
         for rec in self.filtered("l10n_latam_document_type_id"):
             if not rec.l10n_latam_document_number:
-                rec.ref = ""
+                if rec.l10n_latam_use_documents:
+                    rec.ref = "/"
             else:
                 document_type_id = rec.l10n_latam_document_type_id
                 if document_type_id.l10n_do_ncf_type:
-                    document_number = document_type_id._format_document_number(
-                        rec.l10n_latam_document_number
-                    )
+                    # document_number = document_type_id._format_document_number(rec.l10n_latam_document_number)
+                    document_number = rec.l10n_latam_document_number
                 else:
                     document_number = rec.l10n_latam_document_number
 
@@ -310,33 +306,22 @@ class AccountMove(models.Model):
 
     def _get_l10n_latam_documents_domain(self):
         self.ensure_one()
-        if not (
+        domain = super()._get_l10n_latam_documents_domain()
+        if (
             self.journal_id.l10n_latam_use_documents
             and self.journal_id.company_id.country_id == self.env.ref("base.do")
         ):
-            return super()._get_l10n_latam_documents_domain()
-
-        internal_types = ["debit_note"]
-        if self.type in ["out_refund", "in_refund"]:
-            internal_types.append("credit_note")
-        else:
-            internal_types.append("invoice")
-
-        domain = [
-            ("internal_type", "in", internal_types),
-            ("country_id", "=", self.company_id.country_id.id),
-        ]
-        ncf_types = self.journal_id._get_journal_ncf_types(
-            counterpart_partner=self.partner_id.commercial_partner_id, invoice=self
-        )
-        domain += [
-            "|",
-            ("l10n_do_ncf_type", "=", False),
-            ("l10n_do_ncf_type", "in", ncf_types),
-        ]
-        codes = self.journal_id._get_journal_codes()
-        if codes:
-            domain.append(("code", "in", codes))
+            ncf_types = self.journal_id._get_journal_ncf_types(
+                counterpart_partner=self.partner_id.commercial_partner_id, invoice=self
+            )
+            domain += [
+                "|",
+                ("l10n_do_ncf_type", "=", False),
+                ("l10n_do_ncf_type", "in", ncf_types),
+            ]
+            codes = self.journal_id._get_journal_codes()
+            if codes:
+                domain.append(("code", "in", codes))
         return domain
 
     def _get_document_type_sequence(self):
@@ -353,7 +338,7 @@ class AccountMove(models.Model):
             return res
         return super()._get_document_type_sequence()
 
-    @api.constrains("type", "l10n_latam_document_type_id")
+    @api.constrains("move_type", "l10n_latam_document_type_id")
     def _check_invoice_type_document_type(self):
         l10n_do_invoices = self.filtered(
             lambda inv: inv.l10n_latam_country_code == "DO"
@@ -371,7 +356,7 @@ class AccountMove(models.Model):
                     )
                 )
 
-            elif rec.type in ("out_invoice", "out_refund"):
+            elif rec.move_type in ("out_invoice", "out_refund"):
                 if (
                     rec.amount_untaxed_signed >= 250000
                     and l10n_latam_document_type.l10n_do_ncf_type[-7:] != "special"
@@ -391,7 +376,7 @@ class AccountMove(models.Model):
         if (
             self.company_id.country_id == self.env.ref("base.do")
             and self.l10n_latam_document_type_id
-            and self.type == "in_invoice"
+            and self.move_type == "in_invoice"
             and self.partner_id
         ):
             self.l10n_do_expense_type = (
@@ -454,25 +439,27 @@ class AccountMove(models.Model):
             lambda inv: inv.l10n_latam_country_code == "DO"
             and inv.l10n_latam_use_documents
             and inv.is_purchase_document()
-            and inv.l10n_latam_document_number
+            and inv.l10n_latam_document_number != '/'
+            and inv.state != 'draft'
         )
 
         for rec in l10n_do_invoice:
             domain = [
-                ("type", "=", rec.type),
+                ("move_type", "=", rec.move_type),
                 ("ref", "=", rec.ref),
                 ("company_id", "=", rec.company_id.id),
                 ("id", "!=", rec.id),
                 ("commercial_partner_id", "=", rec.commercial_partner_id.id),
+                ("l10n_latam_use_documents","=",True),
+                ("state","!=","draft")
             ]
             if rec.search(domain):
                 raise ValidationError(
                     _("Vendor bill NCF must be unique per vendor and company.")
                 )
-        return super(AccountMove, self - l10n_do_invoice)._check_unique_vendor_number()
+        # return super(AccountMove, self - l10n_do_invoice)._check_unique_vendor_number()
 
     def post(self):
-
         res = super(AccountMove, self).post()
 
         l10n_do_invoices = self.filtered(
@@ -498,13 +485,34 @@ class AccountMove(models.Model):
         if (
             self.l10n_latam_use_documents
             and self.is_ecf_invoice
-            and values.get("type") in ("out_refund", "in_refund")
+            and values.get("move_type") in ("out_refund", "in_refund")
         ):
             values["l10n_latam_document_type_id"] = self.env.ref(
                 "l10n_do_accounting.ecf_credit_note_client"
             ).id
 
         return super(AccountMove, self).new(values, origin, ref)
+
+    @api.depends('l10n_latam_document_type_id')
+    def _compute_name(self):
+        super(AccountMove, self)._compute_name()
+        for rec in self:
+            if not rec.ref:
+                if rec.l10n_latam_use_documents:
+                    rec.ref = '/'
+            document_type_id = rec.l10n_latam_document_type_id
+            if document_type_id.l10n_do_ncf_type and rec.posted_before:
+                if rec.ref == '/':
+                    sequence = self.env['ir.sequence'].search(
+                        [
+                            ("l10n_latam_journal_id", "=", rec.journal_id.id),
+                            ("l10n_latam_document_type_id", "=", rec.l10n_latam_document_type_id.id),
+                        ])
+                    if sequence:
+                        # rec.ref = sequence.get_next_char(sequence.number_next_actual)
+                        rec.ncf_expiration_date = sequence.expiration_date
+                        rec.ref = self.env['ir.sequence'].next_by_code(sequence[0].code)
+                document_number = document_type_id._format_document_number(rec.ref)
 
     def init(self):  # DO NOT FORWARD PORT
         cancelled_invoices = self.search(
@@ -518,14 +526,3 @@ class AccountMove(models.Model):
         for invoice in cancelled_invoices:
             invoice.l10n_do_cancellation_type = invoice.cancellation_type
 
-    def unlink(self):
-        if self.filtered(
-            lambda inv: inv.is_purchase_document()
-            and inv.l10n_latam_country_code == "DO"
-            and inv.l10n_latam_use_documents
-            and inv.name != "/"  # have been posted before
-        ):
-            raise UserError(
-                _("You cannot delete fiscal invoice which have been posted before")
-            )
-        return super(AccountMove, self).unlink()

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
 
-    <record id="view_move_form_inherited" model="ir.ui.view">
+    <!--record id="view_move_form_inherited" model="ir.ui.view">
         <field name="name">account.move.form.inherited</field>
         <field name="model">account.move</field>
         <field name="inherit_id" ref="account.view_move_form"/>
@@ -25,22 +25,22 @@
                        'readonly': [('state','!=','draft')
                 ]}</attribute>
             </xpath>
-            <xpath expr="//span/field[@name='type']" position="attributes">
+            <xpath expr="//span/field[@name='move_type']" position="attributes">
                 <attribute name="attrs">{'invisible': ['|', '|',
                     ('type', '=', 'entry'), ('state', '=', 'draft'), ('is_debit_note', '=', True)
                 ]}</attribute>
             </xpath>
-            <xpath expr="//span/field[@name='type']" position="attributes">
+            <xpath expr="//span/field[@name='move_type']" position="attributes">
                 <attribute name="attrs">{'invisible': ['|', '|',
                     ('type', '=', 'entry'),
                     ('state', 'in', ('draft', 'cancel')),
                     ('is_debit_note', '=', True),
                   ]}</attribute>
             </xpath>
-            <xpath expr="//span/field[@name='type']" position="after">
+            <xpath expr="//span/field[@name='move_type']" position="after">
                 <span attrs="{'invisible': ['|', '|', ('type', '!=', 'out_invoice'), ('state', 'in', ('draft', 'cancel')), ('is_debit_note', '=', False)]}">Customer Debit Note</span>
             </xpath>
-            <xpath expr="//form/sheet/div[2]/span[1]/field[@name='type']" position="after">
+            <xpath expr="//form/sheet/div[2]/span[1]/field[@name='move_type']" position="after">
                 <span attrs="{'invisible': ['|', '|', ('type', '!=', 'in_invoice'), ('state', 'in', ('draft', 'cancel')), ('is_debit_note', '=', False)]}">Vendor Debit Note</span>
             </xpath>
             <xpath expr="//h1/span[1]" position="attributes">
@@ -66,7 +66,7 @@
                 <span attrs="{'invisible': ['|', '|', '|', ('type', '!=', 'in_invoice'), ('state', '!=', 'draft'), ('name', '!=', '/'), ('is_debit_note', '=', False)]}">Draft Vendor Debit Note</span>
             </xpath>
         </field>
-    </record>
+    </record-->
 
     <!-- Exclude debit notes from actual vendor/customer invoices actions -->
     <record id="account.action_move_out_invoice_type" model="ir.actions.act_window">

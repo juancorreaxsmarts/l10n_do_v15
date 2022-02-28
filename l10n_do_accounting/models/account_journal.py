@@ -1,7 +1,6 @@
 from odoo import fields, models, api, _
 from odoo.exceptions import RedirectWarning, ValidationError
 
-
 class AccountJournal(models.Model):
     _inherit = "account.journal"
 
@@ -27,30 +26,27 @@ class AccountJournal(models.Model):
         string="Sequences",
     )
 
-    def _get_all_ncf_types(self, types_list, invoice=False):
+    def _get_all_ncf_types(self, types_list, invoice):
         """
         Include ECF type prefixes if company is ECF issuer
         :param types_list: NCF list used to create fiscal sequences
         :return: types_list
         """
 
-        ecf_types = ["e-%s" % d for d in types_list if d not in ("unique", "import")]
-
-        if self._context.get("use_documents", False) or not invoice:
-            # When called from Journals return all ncf+ecf types to
-            # create fiscal sequences
-            return types_list + ecf_types
-
         if (
-            invoice.is_purchase_document()
-            and invoice.partner_id.l10n_do_dgii_tax_payer_type
-            and invoice.partner_id.l10n_do_dgii_tax_payer_type
-            in ("non_payer", "foreigner")
+            self.company_id.l10n_do_ecf_issuer
+            or self._context.get("use_documents", False)
+            or (
+                invoice
+                and not self.company_id.l10n_do_ecf_issuer
+                and invoice.partner_id.l10n_do_dgii_tax_payer_type
+                and invoice.partner_id.l10n_do_dgii_tax_payer_type not in ("non_payer")
+            )
         ):
-            # Return ncf/ecf types depending on company ECF issuing status
-            return ecf_types if self.company_id.l10n_do_ecf_issuer else types_list
-
-        return types_list + ecf_types
+            types_list.extend(
+                ["e-%s" % d for d in types_list if d not in ("unique", "import")]
+            )
+        return types_list
 
     @api.model
     def _get_l10n_do_ncf_types_data(self):
@@ -61,11 +57,12 @@ class AccountJournal(models.Model):
                 "nonprofit": ["fiscal"],
                 "special": ["special"],
                 "governmental": ["governmental"],
-                "foreigner": ["export", "consumer"],
+                "foreigner": ["export"],
             },
             "received": {
-                "taxpayer": ["fiscal"],
-                "non_payer": ["informal", "minor"],
+                "taxpayer": ["fiscal", "special", "governmental"],
+                "non_payer": ["informal"],
+                "minor": ["minor"],
                 "nonprofit": ["special", "governmental"],
                 "special": ["fiscal", "special", "governmental"],
                 "governmental": ["fiscal", "special", "governmental"],
@@ -104,17 +101,14 @@ class AccountJournal(models.Model):
             )
         )
         if not counterpart_partner:
-            ncf_notes = ["debit_note", "credit_note"]
-            ncf_external = ["fiscal", "special", "governmental"]
-
-            # When Journal fiscal sequence create, include ncf_notes if sale
-            # or exclude ncf_external if purchase
+            ncf_notes = list(["fiscal", "debit_note", "credit_note"])
+            ncf_external = list(["fiscal", "special", "governmental"])
             res = (
                 ncf_types + ncf_notes
                 if self.type == "sale"
                 else [ncf for ncf in ncf_types if ncf not in ncf_external]
             )
-            return self._get_all_ncf_types(res)
+            return self._get_all_ncf_types(res, invoice)
         if counterpart_partner.l10n_do_dgii_tax_payer_type:
             counterpart_ncf_types = ncf_types_data[
                 "issued" if self.type == "sale" else "received"
@@ -125,7 +119,7 @@ class AccountJournal(models.Model):
                 _("Partner %s is needed to issue a fiscal invoice")
                 % self._fields["l10n_do_dgii_tax_payer_type"].string
             )
-        if invoice and invoice.type in ["out_refund", "in_refund"]:
+        if invoice.move_type in ["out_refund", "in_refund"]:
             ncf_types = ["credit_note"]
 
         return self._get_all_ncf_types(ncf_types, invoice)
@@ -168,9 +162,14 @@ class AccountJournal(models.Model):
         sequences = self.l10n_do_sequence_ids
         sequences.unlink()
 
+        if self.type == 'sale':
+            internal_types = ["invoice", "in_invoice", "debit_note", "credit_note"]
+        else:
+            internal_types = ["in_invoice"]
+            
         # Create Sequences
         ncf_types = self._get_journal_ncf_types()
-        internal_types = ["invoice", "in_invoice", "debit_note", "credit_note"]
+        # internal_types = ["invoice", "in_invoice", "debit_note", "credit_note"]
         domain = [
             ("country_id.code", "=", "DO"),
             ("internal_type", "in", internal_types),

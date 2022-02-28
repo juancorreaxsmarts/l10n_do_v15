@@ -10,4 +10,5 @@ class IrSequence(models.Model):
             fields.Date.today().replace(year=fields.Date.today().year + 1), "year"
         ),
     )
+    # l10n_latam_journal_id = fields.Many2one('account.journal', 'Journal')
     # TODO: Note for anyone from the future: use l10n_do prefix on v14, for God sake
