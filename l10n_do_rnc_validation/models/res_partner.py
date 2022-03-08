@@ -165,14 +165,14 @@ class ResPartner(models.Model):
             if result is not None:
                 if 'name' in result:
                     new_vals['name'] = result.get('name')
-                new_vals['vat'] = result.get('vat')
-                new_vals['ref'] = result.get('ref')
-                new_vals['is_company'] = result.get('is_company', False)
-                new_vals['company_type'] = 'company' if new_vals['is_company'] else 'person'
-                if not vals.get('phone'):
-                    new_vals['phone'] = result.get('phone')
-                if not vals.get('street'):
-                    new_vals['street'] = result.get('street')
+                #new_vals['vat'] = result.get('vat')
+                #new_vals['ref'] = result.get('ref')
+                #new_vals['is_company'] = result.get('is_company', False)
+                #new_vals['company_type'] = 'company' if new_vals['is_company'] else 'person'
+                #if not vals.get('phone'):
+                #    new_vals['phone'] = result.get('phone')
+                #if not vals.get('street'):
+                #    new_vals['street'] = result.get('street')
         return new_vals
 
     @api.model_create_multi
