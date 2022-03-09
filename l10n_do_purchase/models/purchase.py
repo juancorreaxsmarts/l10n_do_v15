@@ -4,9 +4,9 @@ from odoo import models
 class PurchaseOrder(models.Model):
     _inherit = "purchase.order"
 
-    def action_view_invoice(self):
+    #def action_view_invoice(self):
 
-        res = super(PurchaseOrder, self).action_view_invoice()
+    #    res = super(PurchaseOrder, self).action_view_invoice()
 
     #    ctx = res["context"]
 
@@ -25,4 +25,4 @@ class PurchaseOrder(models.Model):
     #    if is_l10n_do:
     #        del ctx["default_ref"]
 
-        return res
+    #    return res
