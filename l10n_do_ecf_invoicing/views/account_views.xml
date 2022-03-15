@@ -17,37 +17,19 @@
                 <label for="l10n_do_ecf_send_state" invisible="1"/>
                 <div class="o_row" col="4">
                     <field name="l10n_do_ecf_send_state"
-                           widget="label_selection"
-                           attrs="{'invisible': ['|',
-                           ('is_ecf_invoice', '=', False),
-                           ('type', '=', 'entry')]}"
-                           options="{'classes': {
-                           'to_send': 'default',
-                           'invalid': 'danger',
-                           'contingency': 'warning',
-                           'delivered_accepted': 'success',
-                           'conditionally_accepted': 'success',
-                           'delivered_pending': 'warning',
-                           'delivered_refused': 'danger',
-                           'not_sent': 'warning',
-                           'service_unreachable': 'warning',
-                           }}"
-                    />
+                           widget="label_selection"/>
                 </div>
             </xpath>
             <xpath expr="//field[@name='tax_lock_date_message']/.." position="after">
                 <div class="alert alert-info"
                      role="alert" style="margin-bottom:0px;"
                      attrs="{'invisible': ['|', '|', '|',
-                     ('state', '!=', 'posted'),
-                     ('l10n_latam_country_code', '!=', 'DO'),
-                     ('l10n_do_ecf_expecting_payment', '=', False),
-                     ('l10n_do_company_in_contingency', '=', True)]}">
+                     ('state', '!=', 'posted')]}">
                     Notice. This invoice is expecting a payment to be signed.
                 </div>
             </xpath>
             <xpath expr="//h4[@name='l10n_do_cancellation_reason']" position="after">
-                <h4 name="l10n_do_cancellation_reason" attrs="{'invisible':['|','|', '|', ('state','!=','cancel'),('l10n_latam_country_code', '!=', 'DO'), ('is_ecf_invoice', '=', False), ('type', '=', 'entry')]}">
+                <h4 name="l10n_do_cancellation_reason" attrs="{'invisible':['|','|', '|', ('state','!=','cancel'), ('move_type', '=', 'entry')]}">
                     ECF rejected by DGII
                 </h4>
             </xpath>

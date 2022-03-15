@@ -78,6 +78,11 @@ class AccountMove(models.Model):
         compute="_compute_l10n_do_ecf_expecting_payment",
     )
 
+    l10n_do_ecf_edi_file = fields.Binary("ECF XML File", copy=False, readonly=True)
+    l10n_do_ecf_edi_file_name = fields.Char(
+        "ECF XML File Name", copy=False, readonly=True
+    )
+
     @api.depends("l10n_do_ecf_security_code", "l10n_do_ecf_sign_date", "invoice_date")
     @api.depends_context("l10n_do_ecf_service_env")
     def _compute_l10n_do_electronic_stamp(self):
