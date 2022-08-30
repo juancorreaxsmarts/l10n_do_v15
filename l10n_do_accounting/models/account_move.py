@@ -249,13 +249,13 @@ class AccountMove(models.Model):
             )
 
         if fiscal_invoice and not self.env.user.has_group(
-            "l10n_do_accounting_plus.group_l10n_do_fiscal_invoice_cancel"
+            "account.group_account_invoice"
         ):
             raise AccessError(_("You are not allowed to cancel Fiscal Invoices"))
 
         if fiscal_invoice:
             action = self.env.ref(
-                "l10n_do_accounting_plus.action_account_move_cancel"
+                "account.group_account_invoice"
             ).read()[0]
             action["context"] = {"default_move_id": fiscal_invoice.id}
             return action
@@ -268,7 +268,7 @@ class AccountMove(models.Model):
             and self.move_type[-6:] in ("nvoice", "refund")
         )
         if fiscal_invoice and not self.env.user.has_group(
-            "l10n_do_accounting_plus.group_l10n_do_fiscal_credit_note"
+            "account.group_account_invoice"
         ):
             raise AccessError(_("You are not allowed to issue Fiscal Credit Notes"))
 
