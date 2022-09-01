@@ -6,7 +6,7 @@ class AccountMove(models.Model):
 
     def _get_debit_line_tax(self, debit_date):
 
-        if self.type == "out_invoice":
+        if self.move_type == "out_invoice":
             return (
                 self.company_id.account_sale_tax_id
                 or self.env.ref("l10n_do.tax_18_sale")

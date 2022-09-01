@@ -95,7 +95,7 @@ class AccountDebitNote(models.TransientModel):
 
         # Setting default account
         journal = move_ids[0].journal_id
-        if self._context.get("type") in ("out_invoice", "in_refund"):
+        if self._context.get("move_type") in ("out_invoice", "in_refund"):
             res["l10n_do_account_id"] = journal.default_credit_account_id.id
         else:
             res["l10n_do_account_id"] = journal.default_debit_account_id.id
@@ -140,7 +140,7 @@ class AccountDebitNote(models.TransientModel):
                 .new(
                     {
                         "partner_id": move_id.partner_id.id,
-                        "type": move_type,
+                        "move_type": move_type,
                         "journal_id": move_id.journal_id.id,
                     }
                 )

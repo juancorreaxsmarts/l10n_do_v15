@@ -94,7 +94,7 @@ class AccountMove(models.Model):
         )._compute_l10n_do_electronic_stamp()
 
     def _compute_l10n_do_ecf_expecting_payment(self):
-        invoices = self.filtered(lambda i: i.type != "entry" and i.is_ecf_invoice)
+        invoices = self.filtered(lambda i: i.move_type != "entry" and i.is_ecf_invoice)
         for invoice in invoices:
             invoice.l10n_do_ecf_expecting_payment = bool(
                 not invoice._do_immediate_send()
@@ -357,7 +357,7 @@ class AccountMove(models.Model):
                         self.debit_origin_id.get_l10n_do_ncf_type == "32"
                         and self.debit_origin_id.amount_total_signed >= 250000
                     )
-                    or self.type in ("out_refund", "in_refund")
+                    or self.move_type in ("out_refund", "in_refund")
                 ):
                     if is_l10n_do_partner and partner_vat:
                         buyer_data["RNCComprador"] = partner_vat
@@ -626,7 +626,7 @@ class AccountMove(models.Model):
             quantity=invoice_line.quantity,
             product=invoice_line.product_id,
             partner=invoice_line.move_id.partner_id,
-            is_refund=True if invoice_line.move_id.type == "in_refund" else False,
+            is_refund=True if invoice_line.move_id.move_type == "in_refund" else False,
         )
 
         withholding_vals = od()
@@ -1117,7 +1117,7 @@ class AccountMove(models.Model):
 
         pending_invoices = self.search(
             [
-                ("type", "in", ("out_invoice", "out_refund", "in_invoice")),
+                ("move_type", "in", ("out_invoice", "out_refund", "in_invoice")),
                 ("l10n_do_ecf_send_state", "=", "delivered_pending"),
                 ("l10n_do_ecf_trackid", "!=", False),
             ]
@@ -1133,7 +1133,7 @@ class AccountMove(models.Model):
 
         contingency_invoices = self.search(
             [
-                ("type", "in", ("out_invoice", "out_refund", "in_invoice")),
+                ("move_type", "in", ("out_invoice", "out_refund", "in_invoice")),
                 ("l10n_do_ecf_send_state", "=", "contingency"),
                 ("is_l10n_do_internal_sequence", "=", True),
             ]
